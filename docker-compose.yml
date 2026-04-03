@@ -1,0 +1,200 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# AEGISCORE — docker-compose.yml
+# Self-Hosted AI Security Intelligence Platform
+# ═══════════════════════════════════════════════════════════════════════════════
+
+version: "3.9"
+
+services:
+  # ── PostgreSQL Database ──────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: aegiscore-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: aegiscore
+      POSTGRES_PASSWORD: aegiscore_secret
+      POSTGRES_DB: aegiscore
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegiscore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Redis ────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: aegiscore-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── FastAPI Backend ──────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegiscore-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aegiscore:aegiscore_secret@db:5432/aegiscore
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: change-me-in-production-use-a-strong-key
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: codellama:7b
+      ML_MODEL_PATH: /app/ml_models/risk_model.pkl
+      DEBUG: "false"
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:80"]'
+    volumes:
+      - model_data:/app/ml_models
+      - repo_cache:/tmp/repos
+
+  # ── Celery Scan Worker ───────────────────────────────────────────────────
+  worker-scan:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegiscore-worker-scan
+    restart: unless-stopped
+    command: celery -A workers.celery_app worker -Q scans --loglevel=info --concurrency=2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aegiscore:aegiscore_secret@db:5432/aegiscore
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: change-me-in-production-use-a-strong-key
+      ML_MODEL_PATH: /app/ml_models/risk_model.pkl
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: codellama:7b
+    volumes:
+      - model_data:/app/ml_models
+      - repo_cache:/tmp/repos
+
+  # ── Celery AI Worker ─────────────────────────────────────────────────────
+  worker-ai:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegiscore-worker-ai
+    restart: unless-stopped
+    command: celery -A workers.celery_app worker -Q ai --loglevel=info --concurrency=1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aegiscore:aegiscore_secret@db:5432/aegiscore
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: change-me-in-production-use-a-strong-key
+      ML_MODEL_PATH: /app/ml_models/risk_model.pkl
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: codellama:7b
+    volumes:
+      - model_data:/app/ml_models
+      - repo_cache:/tmp/repos
+
+  # ── Celery Maintenance Worker ────────────────────────────────────────────
+  worker-maintenance:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aegiscore-worker-maint
+    restart: unless-stopped
+    command: celery -A workers.celery_app worker -Q maintenance --loglevel=info --concurrency=1
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://aegiscore:aegiscore_secret@db:5432/aegiscore
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      SECRET_KEY: change-me-in-production-use-a-strong-key
+      ML_MODEL_PATH: /app/ml_models/risk_model.pkl
+    volumes:
+      - model_data:/app/ml_models
+
+  # ── React Frontend ──────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aegiscore-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+
+  # ── Ollama (Local LLM) ──────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aegiscore-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  # ── Prometheus ───────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: aegiscore-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./infra/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    depends_on:
+      - api
+
+  # ── Grafana ──────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:latest
+    container_name: aegiscore-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+volumes:
+  pg_data:
+  model_data:
+  repo_cache:
+  ollama_data:
+  prometheus_data:
+  grafana_data:

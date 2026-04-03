@@ -1,3 +1,7 @@
+Listed directory AEGISCORE
+Viewed risk.py:1-199
+
+```markdown
 <div align="center">
 
 <br/>
@@ -517,25 +521,23 @@ A full command-line interface for developers who prefer working in the terminal.
 
 ```bash
 # Authenticate
-aegiscore auth login --org byteaegis --token <your-token>
+aegiscore login --email admin@byteaegis.in --password your-secure-password
+aegiscore whoami
 
-# Scan a local directory and push results to the platform
-aegiscore scan ./my-repo --repo-id repo-A
+# Trigger a scan for a repository
+aegiscore scan --repo-id <id> --branch main --scanners semgrep,bandit
 
-# Show per-file risk scores for a repository
-aegiscore predict ./my-repo --repo-id repo-A --top 10
+# View findings across your repos
+aegiscore findings --severity CRITICAL
 
-# Fetch and display AI-generated fix for a specific finding
-aegiscore fix --finding-id 4821
+# Show risk scores for a repository
+aegiscore risk --repo-id <id>
 
-# Show all active scans across your organization
-aegiscore status --org byteaegis
+# Check the status of a running scan
+aegiscore scan-status --scan-id <id>
 
-# Show cross-repo correlations for a specific rule
-aegiscore correlate --rule python.lang.security.audit.hardcoded-password
-
-# Export findings report as JSON or CSV
-aegiscore report --repo-id repo-A --format csv --output report.csv
+# Check ML Risk Model status
+aegiscore model-status
 
 # Show platform health summary
 aegiscore health
@@ -565,157 +567,161 @@ AEGISCORE monitors itself using Prometheus metrics exposed by FastAPI and Celery
 ```
 aegiscore/
 │
-├── .github/
-│   └── workflows/
-│       └── aegiscore-scan.yml          # Reusable GitHub Actions workflow
-│                                        # Include in any repo with one line
+├── .env.example
+├── .gitignore
+├── docker-compose.yml
+├── README.md
 │
 ├── backend/
-│   ├── main.py                          # FastAPI app entry point
-│   │                                    # Registers all routers, middleware,
-│   │                                    # Prometheus metrics, CORS
-│   │
-│   ├── config.py                        # All settings from environment variables
-│   │                                    # Uses pydantic-settings BaseSettings
-│   │
+│   ├── alembic.ini
+│   ├── config.py                        # All settings from environment variables / CLI config file
 │   ├── database.py                      # PostgreSQL async engine + session factory
-│   │                                    # SQLAlchemy 2.x async style
-│   │
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── org.py                       # Organization, Team, TeamMembership
-│   │   ├── user.py                      # User, Role
-│   │   ├── repo.py                      # Repository, RepoBranch
-│   │   ├── scan.py                      # Scan, ScanTask
-│   │   ├── finding.py                   # Finding, CrossRepoLink
-│   │   ├── risk.py                      # RiskScore, RiskHistory
-│   │   └── fix.py                       # FixSuggestion
-│   │
-│   ├── schemas/
-│   │   ├── auth.py                      # Pydantic schemas for auth endpoints
-│   │   ├── scan.py                      # ScanTriggerRequest, ScanResponse
-│   │   ├── finding.py                   # FindingResponse, FindingFilter
-│   │   ├── risk.py                      # RiskScoreResponse
-│   │   └── fix.py                       # FixSuggestionResponse
-│   │
-│   ├── routers/
-│   │   ├── auth.py                      # POST /auth/login, /auth/refresh
-│   │   ├── orgs.py                      # CRUD for organizations and teams
-│   │   ├── repos.py                     # CRUD for repositories
-│   │   ├── scans.py                     # POST /scans/trigger, GET /scans
-│   │   ├── findings.py                  # GET /findings with filters
-│   │   ├── risk.py                      # GET /risk/scores, /risk/heatmap
-│   │   ├── fixes.py                     # GET /fixes, POST /fixes/apply
-│   │   ├── correlations.py              # GET /correlations
-│   │   └── metrics.py                   # GET /metrics (Prometheus)
-│   │
-│   ├── services/
-│   │   ├── scanner/
-│   │   │   ├── semgrep.py               # Semgrep runner + JSON parser
-│   │   │   ├── bandit.py                # Bandit runner + output parser
-│   │   │   └── trivy.py                 # Trivy runner + output parser
-│   │   │
-│   │   ├── ai/
-│   │   │   ├── risk_model.py            # Random Forest training + prediction
-│   │   │   ├── feature_extractor.py     # Git log feature extraction per file
-│   │   │   └── fix_generator.py         # Ollama API client for fix generation
-│   │   │
-│   │   ├── correlation.py               # Cross-repo finding correlation engine
-│   │   └── alerts.py                    # Slack webhook notification service
-│   │
-│   ├── workers/
-│   │   ├── celery_app.py                # Celery app init with Redis broker
-│   │   └── tasks/
-│   │       ├── scan_tasks.py            # Celery tasks for each scanner
-│   │       ├── ai_tasks.py              # Risk scoring + fix generation tasks
-│   │       └── maintenance_tasks.py     # ML retraining + cleanup tasks
+│   ├── Dockerfile
+│   ├── main.py                          # FastAPI app entry point / Click CLI entry point
+│   ├── requirements.txt
 │   │
 │   ├── auth/
-│   │   ├── jwt.py                       # JWT creation + verification
 │   │   ├── dependencies.py              # FastAPI auth dependency injection
-│   │   └── rbac.py                      # Role-based access control decorators
+│   │   ├── jwt.py                       # JWT creation + verification
+│   │   ├── rbac.py                      # Role-based access control decorators
+│   │   └── __init__.py
 │   │
 │   ├── migrations/
 │   │   ├── env.py                       # Alembic migration environment
-│   │   └── versions/                    # Auto-generated migration files
+│   │   ├── script.py.mako
+│   │   └── versions/
+│   │       └── __init__.py
 │   │
-│   ├── requirements.txt
-│   └── Dockerfile
+│   ├── models/
+│   │   ├── finding.py                   # Finding, CrossRepoLink
+│   │   ├── fix.py                       # FixSuggestion / Pydantic schemas / API routers
+│   │   ├── org.py                       # Organization, Team, TeamMembership
+│   │   ├── repo.py                      # Repository, RepoBranch
+│   │   ├── risk.py                      # RiskScore, RiskHistory / Pydantic schemas / API routers
+│   │   ├── scan.py                      # Scan, ScanTask
+│   │   ├── user.py                      # User, Role
+│   │   └── __init__.py
+│   │
+│   ├── routers/
+│   │   ├── auth.py                      # Pydantic schemas / API routers / auth login
+│   │   ├── correlations.py              # GET /correlations / API calls
+│   │   ├── findings.py                  # GET /findings with filters / API calls
+│   │   ├── fixes.py                     # GET /fixes, POST /fixes/apply / API calls
+│   │   ├── metrics.py                   # GET /metrics (Prometheus)
+│   │   ├── orgs.py                      # CRUD for organizations and teams
+│   │   ├── repos.py                     # CRUD for repositories
+│   │   ├── risk.py                      # RiskScore, RiskHistory / Pydantic schemas / API routers
+│   │   ├── scans.py                     # POST /scans/trigger / Scan API calls
+│   │   └── __init__.py
+│   │
+│   ├── schemas/
+│   │   ├── auth.py                      # Pydantic schemas / API routers / auth login
+│   │   ├── finding.py                   # Finding, CrossRepoLink
+│   │   ├── fix.py                       # FixSuggestion / Pydantic schemas / API routers
+│   │   ├── org.py                       # Organization, Team, TeamMembership
+│   │   ├── risk.py                      # RiskScore, RiskHistory / Pydantic schemas / API routers
+│   │   ├── scan.py                      # Scan, ScanTask
+│   │   └── __init__.py
+│   │
+│   ├── services/
+│   │   ├── alerts.py                    # Slack webhook notification service
+│   │   ├── correlation.py               # Cross-repo finding correlation engine
+│   │   ├── __init__.py
+│   │   │
+│   │   ├── ai/
+│   │   │   ├── feature_extractor.py     # Git log feature extraction per file
+│   │   │   ├── fix_generator.py         # Ollama API client for fix generation
+│   │   │   ├── risk_model.py            # Random Forest training + prediction
+│   │   │   └── __init__.py
+│   │   │
+│   │   └── scanner/
+│   │       ├── bandit.py                # Bandit runner + output parser
+│   │       ├── semgrep.py               # Semgrep runner + JSON parser
+│   │       ├── trivy.py                 # Trivy runner + output parser
+│   │       └── __init__.py
+│   │
+│   └── workers/
+│       ├── celery_app.py                # Celery app init with Redis broker
+│       ├── __init__.py
+│       └── tasks/
+│           ├── ai_tasks.py              # Risk scoring + fix generation tasks
+│           ├── maintenance_tasks.py     # ML retraining + cleanup tasks
+│           ├── scan_tasks.py            # Celery tasks for each scanner
+│           └── __init__.py
+│
+├── cli/
+│   ├── aegiscore_cli.py
+│   └── pyproject.toml
 │
 ├── frontend/
-│   ├── package.json
-│   ├── index.html
 │   ├── Dockerfile
+│   ├── index.html
+│   ├── nginx.conf
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── vite.config.js
 │   └── src/
 │       ├── App.jsx
 │       ├── index.css
+│       ├── main.jsx
+│       │
 │       ├── api/
+│       │   ├── auth.js
 │       │   ├── client.js                # Axios instance with JWT interceptor
-│       │   ├── scans.js                 # Scan API calls
-│       │   ├── findings.js              # Findings API calls
-│       │   ├── risk.js                  # Risk score API calls
-│       │   ├── fixes.js                 # Fix suggestion API calls
-│       │   └── correlations.js          # Cross-repo correlation API calls
+│       │   ├── correlations.js
+│       │   ├── findings.js
+│       │   ├── fixes.js
+│       │   ├── risk.js
+│       │   └── scans.js
+│       │
+│       ├── components/
+│       │   ├── correlation/
+│       │   │   └── CorrelationPanel.jsx
+│       │   ├── dashboard/
+│       │   │   ├── ActiveScans.jsx
+│       │   │   ├── SeverityBreakdown.jsx
+│       │   │   └── StatCards.jsx
+│       │   ├── findings/
+│       │   │   ├── FindingDetail.jsx
+│       │   │   └── FindingsTable.jsx
+│       │   ├── fixes/
+│       │   │   └── FixReview.jsx
+│       │   ├── layout/
+│       │   │   ├── AppShell.jsx
+│       │   │   ├── Footer.jsx
+│       │   │   ├── Header.jsx
+│       │   │   └── Sidebar.jsx
+│       │   ├── risk/
+│       │   │   ├── RiskHeatmap.jsx
+│       │   │   └── RiskTrendChart.jsx
+│       │   └── ui/
+│       │       ├── Badge.jsx
+│       │       ├── Button.jsx
+│       │       ├── Card.jsx
+│       │       ├── EmptyState.jsx
+│       │       ├── Skeleton.jsx
+│       │       └── Tooltip.jsx
 │       │
 │       ├── contexts/
 │       │   ├── AuthContext.jsx          # JWT auth state + login/logout
 │       │   └── OrgContext.jsx           # Active org + team state
 │       │
-│       └── components/
-│           ├── layout/
-│           │   ├── Header.jsx
-│           │   ├── Sidebar.jsx
-│           │   └── Footer.jsx
-│           ├── dashboard/
-│           │   ├── StatCards.jsx
-│           │   ├── ActiveScans.jsx
-│           │   └── SeverityBreakdown.jsx
-│           ├── risk/
-│           │   ├── RiskHeatmap.jsx
-│           │   └── RiskTrendChart.jsx
-│           ├── findings/
-│           │   ├── FindingsTable.jsx
-│           │   └── FindingDetail.jsx
-│           ├── correlation/
-│           │   └── CorrelationGraph.jsx
-│           ├── fixes/
-│           │   └── FixReview.jsx
-│           └── team/
-│               ├── TeamView.jsx
-│               └── MemberList.jsx
+│       ├── hooks/
+│       │   ├── useAuth.js
+│       │   ├── useOrg.js
+│       │   └── usePolling.js
+│       │
+│       └── pages/
+│           ├── CorrelationsPage.jsx
+│           ├── DashboardPage.jsx
+│           ├── FindingsPage.jsx
+│           ├── FixesPage.jsx
+│           ├── LoginPage.jsx
+│           ├── RepoPage.jsx
+│           └── RiskPage.jsx
 │
-├── cli/
-│   ├── setup.py                         # CLI package config
-│   └── aegiscore/
-│       ├── __init__.py
-│       ├── main.py                      # Click CLI entry point
-│       ├── commands/
-│       │   ├── auth.py                  # auth login, auth logout
-│       │   ├── scan.py                  # scan command
-│       │   ├── predict.py               # predict command
-│       │   ├── fix.py                   # fix command
-│       │   ├── status.py                # status command
-│       │   ├── correlate.py             # correlate command
-│       │   ├── report.py                # report command
-│       │   └── health.py               # health command
-│       └── config.py                    # CLI config file (~/.aegiscore/config.json)
-│
-├── monitoring/
-│   ├── prometheus.yml                   # Prometheus scrape config
-│   └── grafana/
-│       ├── provisioning/
-│       │   └── datasources/
-│       │       └── prometheus.yml
-│       └── dashboards/
-│           └── aegiscore.json           # Pre-built Grafana dashboard JSON
-│
-├── docker-compose.yml                   # Full stack: API + workers + DB + Redis
-│                                         # + Ollama + Prometheus + Grafana
-├── docker-compose.dev.yml               # Dev overrides: hot reload, exposed ports
-├── .env.example
-├── .gitignore
-├── Makefile                             # make up, make down, make migrate, make train
-└── README.md
+└── infra/
+    └── prometheus.yml
 ```
 
 ---
@@ -754,7 +760,7 @@ aegiscore/
 │  findings                                                                    │
 │  ─────────────────────────────────────────────────────────────────────────  │
 │  id  │  scan_id  │  scanner (semgrep/bandit/trivy)  │  severity             │
-│  rule_id  │  file_path  │  line_number  │  message  │  cwe  │  metadata     │
+│  rule_id  │  file_path  │  line_number  │  message  │  cwe  │  metadata_    │
 └────────────────────────┬─────────────────────────────────────────────────--┘
               ┌──────────┴──────────┐
               │ N───M               │ 1───1
@@ -924,7 +930,7 @@ Query params: `rule_id`, `severity`, `repo_id`, `limit`
 
 **Retraining trigger:** automatic after every 10 new completed scans
 
-**Model artifact storage:** `backend/models/risk_model.pkl` (volume-mounted in Docker)
+**Model artifact storage:** `backend/ml_models/risk_model.pkl` (volume-mounted in Docker)
 
 **Metrics published to Prometheus after each retraining:**
 - `aegiscore_ml_precision`
@@ -947,44 +953,27 @@ Full command reference:
 
 ```bash
 # Authentication
-aegiscore auth login                        # Interactive login
-aegiscore auth login --email x --token y   # Non-interactive (for scripts)
-aegiscore auth logout                       # Clear stored credentials
-aegiscore auth whoami                       # Show current user + org
+aegiscore login --email admin@byteaegis.in --password your-secure-password
+aegiscore logout
+aegiscore whoami
 
 # Scanning
-aegiscore scan ./path/to/repo               # Scan local directory
-aegiscore scan ./path --repo-id <id>        # Link to platform repo
-aegiscore scan ./path --scanners semgrep    # Run specific scanner only
-aegiscore scan ./path --wait                # Block until scan completes
+aegiscore scan --repo-id <id> --branch main --scanners semgrep,bandit
 
-# Risk Forecasting
-aegiscore predict ./path/to/repo            # Show all file risk scores
-aegiscore predict ./path --top 10           # Show top 10 riskiest files
-aegiscore predict ./path --min-score 0.7    # Show files above threshold
-aegiscore predict ./path --file app/auth.py # Score a specific file only
+# View findings across your repos
+aegiscore findings --severity CRITICAL
 
-# Fix Generation
-aegiscore fix --finding-id <uuid>           # Fetch AI fix for a finding
-aegiscore fix --finding-id <uuid> --apply   # Fetch fix and apply as git patch
-aegiscore fix --scan-id <uuid>              # Fetch all fixes for a scan
+# Show risk scores for a repository
+aegiscore risk --repo-id <id>
 
-# Status
-aegiscore status                            # All active scans in your org
-aegiscore status --repo-id <id>             # Active scans for one repo
-aegiscore status --watch                    # Live-updating status (refresh 5s)
+# Check the status of a running scan
+aegiscore scan-status --scan-id <id>
 
-# Correlations
-aegiscore correlate --rule <rule_id>        # Find correlated findings by rule
-aegiscore correlate --finding-id <uuid>     # Find findings correlated to one
+# Check ML Risk Model status
+aegiscore model-status
 
-# Reports
-aegiscore report --repo-id <id>             # Print findings summary to stdout
-aegiscore report --repo-id <id> --format csv --output report.csv
-aegiscore report --repo-id <id> --format json --output report.json
-
-# Platform Health
-aegiscore health                            # API status, worker count, queue depth
+# Show platform health summary
+aegiscore health
 ```
 
 ---
@@ -1035,30 +1024,29 @@ This starts: PostgreSQL, Redis, FastAPI, 4 Celery workers, Ollama, React fronten
 ### 4. Run database migrations
 
 ```bash
-docker compose exec backend alembic upgrade head
+docker compose exec api alembic upgrade head
 ```
 
 ### 5. Create your first organization and admin user
 
 ```bash
-docker compose exec backend python scripts/create_org.py \
-  --org-name "BYTEAEGIS" \
-  --admin-email "admin@byteaegis.in" \
-  --admin-password "your-secure-password"
+curl -X POST "http://localhost:8000/api/v1/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@byteaegis.in", "password": "your-secure-password", "full_name": "AEGISCORE Admin"}'
 ```
 
 ### 6. Install the CLI
 
 ```bash
 cd cli && pip install -e .
-aegiscore auth login --email admin@byteaegis.in
+aegiscore login --email admin@byteaegis.in --password your-secure-password
 ```
 
 ### 7. Access the platform
 
 | Service | URL |
 |---------|-----|
-| React Dashboard | http://localhost:3000 |
+| React Dashboard | http://localhost:5173 |
 | FastAPI Docs | http://localhost:8000/docs |
 | Grafana | http://localhost:3001 (admin/admin) |
 | Prometheus | http://localhost:9090 |
@@ -1084,7 +1072,7 @@ REDIS_URL=redis://localhost:6379/0
 SECRET_KEY=                     # python -c "import secrets; print(secrets.token_hex(32))"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 REFRESH_TOKEN_EXPIRE_DAYS=7
-CORS_ORIGINS=http://localhost:3000
+CORS_ORIGINS=http://localhost:5173
 
 # Celery
 CELERY_BROKER_URL=redis://localhost:6379/0
@@ -1097,7 +1085,7 @@ OLLAMA_MODEL=codellama:7b
 OLLAMA_TIMEOUT=120              # seconds; larger repos need more time
 
 # ML Model
-ML_MODEL_PATH=/app/models/risk_model.pkl
+ML_MODEL_PATH=/app/ml_models/risk_model.pkl
 ML_RETRAIN_EVERY_N_SCANS=10
 ML_MIN_TRAINING_SAMPLES=50
 
@@ -1248,3 +1236,4 @@ You are free to self-host, modify, and use AEGISCORE commercially. The only requ
 *Security intelligence. Self-hosted. Yours.*
 
 </div>
+```
