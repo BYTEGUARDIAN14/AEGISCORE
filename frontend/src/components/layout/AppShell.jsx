@@ -1,12 +1,16 @@
 /**
  * AEGISCORE — AppShell Component
- * Main layout: sidebar + header + content area.
+ * Main layout: sidebar + header + content area + scan modal.
  */
+import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import ScanTriggerModal from '../dashboard/ScanTriggerModal';
 
 export function AppShell() {
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
@@ -17,7 +21,7 @@ export function AppShell() {
         flexDirection: 'column',
         minHeight: '100vh',
       }}>
-        <Header />
+        <Header onNewScan={() => setScanModalOpen(true)} />
         <main style={{
           flex: 1,
           padding: '24px',
@@ -27,6 +31,12 @@ export function AppShell() {
           <Outlet />
         </main>
       </div>
+
+      <ScanTriggerModal
+        isOpen={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+        onTriggered={() => setScanModalOpen(false)}
+      />
     </div>
   );
 }

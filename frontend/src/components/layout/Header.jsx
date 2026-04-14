@@ -16,7 +16,7 @@ const PAGE_TITLES = {
   '/docs': 'Documentation',
 };
 
-export function Header() {
+export function Header({ onNewScan }) {
   const location = useLocation();
   const [now, setNow] = useState(new Date());
 
@@ -52,12 +52,42 @@ export function Header() {
         {pageTitle}
       </span>
 
-      {/* System Status */}
+      {/* Actions + Status */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
-        gap: '8px',
+        gap: '12px',
       }}>
+        {onNewScan && (
+          <button
+            onClick={onNewScan}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              backgroundColor: 'var(--accent-muted)',
+              border: '1px solid var(--accent-border)',
+              color: 'var(--accent)',
+              borderRadius: '5px',
+              padding: '5px 12px',
+              fontFamily: 'var(--font-sans)',
+              fontWeight: 600,
+              fontSize: '11px',
+              cursor: 'pointer',
+              transition: 'all 120ms ease',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'var(--accent)'; e.currentTarget.style.color = '#fff'; }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--accent-muted)'; e.currentTarget.style.color = 'var(--accent)'; }}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 2V10M2 6H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            New Scan
+          </button>
+        )}
+
+        <div style={{ width: '1px', height: '16px', backgroundColor: 'var(--border-subtle)' }} />
+
         <span style={{
           width: '8px',
           height: '8px',
@@ -70,14 +100,6 @@ export function Header() {
           fontFamily: 'var(--font-mono)',
           fontSize: '11px',
           color: 'var(--text-tertiary)',
-        }}>
-          All systems operational
-        </span>
-        <span style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '11px',
-          color: 'var(--text-tertiary)',
-          marginLeft: '8px',
         }}>
           {timestamp}
         </span>

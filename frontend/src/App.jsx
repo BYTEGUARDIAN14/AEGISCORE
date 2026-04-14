@@ -14,6 +14,8 @@ import FindingsPage from './pages/FindingsPage';
 import RiskPage from './pages/RiskPage';
 import FixesPage from './pages/FixesPage';
 import CorrelationsPage from './pages/CorrelationsPage';
+import SettingsPage from './pages/SettingsPage';
+import DocsPage from './pages/DocsPage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated, loading } = useAuth();
@@ -63,8 +65,8 @@ function AppRoutes() {
         <Route path="/risk" element={<RiskPage />} />
         <Route path="/fixes" element={<FixesPage />} />
         <Route path="/correlations" element={<CorrelationsPage />} />
-        <Route path="/settings" element={<div style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sans)', fontSize: '13px' }}>Settings — Coming soon</div>} />
-        <Route path="/docs" element={<div style={{ color: 'var(--text-tertiary)', fontFamily: 'var(--font-sans)', fontSize: '13px' }}>Documentation — Visit byteaegis.in</div>} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/docs" element={<DocsPage />} />
       </Route>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
