@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import RiskHeatmap from '../components/risk/RiskHeatmap';
 import RiskTrendChart from '../components/risk/RiskTrendChart';
 import Card from '../components/ui/Card';
-import { getRiskHeatmap, getModelStatus } from '../api/risk';
+import { getRiskHeatmap, getRiskHistory, getModelStatus } from '../api/risk';
 import apiClient from '../api/client';
 
 export function RiskPage() {
@@ -14,6 +14,8 @@ export function RiskPage() {
   const [selectedRepo, setSelectedRepo] = useState('');
   const [riskFiles, setRiskFiles] = useState([]);
   const [modelStatus, setModelStatus] = useState(null);
+  const [trendData, setTrendData] = useState([]);
+  const [trendFiles, setTrendFiles] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,8 +45,46 @@ export function RiskPage() {
           getRiskHeatmap(selectedRepo, 0, 50),
           getModelStatus(),
         ]);
-        setRiskFiles(heatmap.files || []);
+        const files = heatmap.files || [];
+        setRiskFiles(files);
         setModelStatus(status);
+
+        // Fetch risk history for top 5 riskiest files
+        const topFiles = files.slice(0, 5);
+        if (topFiles.length > 0) {
+          const historyPromises = topFiles.map(f =>
+            getRiskHistory(selectedRepo, f.file_path, 30).catch(() => ({ history: [] }))
+          );
+          const histories = await Promise.all(historyPromises);
+
+          // Build trend chart data from histories
+          const dateMap = {};
+          const fileNames = topFiles.map(f => f.file_path);
+          setTrendFiles(fileNames);
+
+          histories.forEach((hist, fileIdx) => {
+            const points = hist.history || [];
+            points.forEach(point => {
+              const dateKey = new Date(point.recorded_at).toLocaleDateString('en-US', {
+                month: 'short', day: 'numeric',
+              });
+              if (!dateMap[dateKey]) {
+                dateMap[dateKey] = { date: dateKey };
+              }
+              dateMap[dateKey][`file${fileIdx + 1}`] = point.score;
+            });
+          });
+
+          const chartData = Object.values(dateMap).sort((a, b) => {
+            const da = new Date(a.date + ' 2025');
+            const db = new Date(b.date + ' 2025');
+            return da - db;
+          });
+
+          if (chartData.length > 0) {
+            setTrendData(chartData);
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch risk data:', err);
       } finally {
@@ -84,9 +124,9 @@ export function RiskPage() {
         <RiskHeatmap files={riskFiles} loading={loading} />
       </div>
 
-      {/* Risk Trend Chart */}
+      {/* Risk Trend Chart — wired to real data */}
       <div style={{ marginBottom: '24px' }}>
-        <RiskTrendChart />
+        <RiskTrendChart data={trendData} files={trendFiles} />
       </div>
 
       {/* ML Model Status */}
@@ -104,82 +144,53 @@ export function RiskPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
           <div>
             <div style={{
-              fontFamily: 'var(--font-sans)',
-              fontWeight: 500,
-              fontSize: '10px',
-              color: 'var(--text-tertiary)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              marginBottom: '4px',
+              fontFamily: 'var(--font-sans)', fontWeight: 500, fontSize: '10px',
+              color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+              textTransform: 'uppercase', marginBottom: '4px',
             }}>
               VERSION
             </div>
-            <div style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '13px',
-              color: 'var(--text-primary)',
-            }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-primary)' }}>
               {modelStatus?.model_version || 'Not trained'}
             </div>
           </div>
 
           <div>
             <div style={{
-              fontFamily: 'var(--font-sans)',
-              fontWeight: 500,
-              fontSize: '10px',
-              color: 'var(--text-tertiary)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              marginBottom: '4px',
+              fontFamily: 'var(--font-sans)', fontWeight: 500, fontSize: '10px',
+              color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+              textTransform: 'uppercase', marginBottom: '4px',
             }}>
               PRECISION
             </div>
-            <div style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '13px',
-              color: 'var(--text-primary)',
-            }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-primary)' }}>
               {modelStatus?.precision?.toFixed(3) || '—'}
             </div>
           </div>
 
           <div>
             <div style={{
-              fontFamily: 'var(--font-sans)',
-              fontWeight: 500,
-              fontSize: '10px',
-              color: 'var(--text-tertiary)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              marginBottom: '4px',
+              fontFamily: 'var(--font-sans)', fontWeight: 500, fontSize: '10px',
+              color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+              textTransform: 'uppercase', marginBottom: '4px',
             }}>
               RECALL
             </div>
-            <div style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '13px',
-              color: 'var(--text-primary)',
-            }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-primary)' }}>
               {modelStatus?.recall?.toFixed(3) || '—'}
             </div>
           </div>
 
           <div>
             <div style={{
-              fontFamily: 'var(--font-sans)',
-              fontWeight: 500,
-              fontSize: '10px',
-              color: 'var(--text-tertiary)',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              marginBottom: '4px',
+              fontFamily: 'var(--font-sans)', fontWeight: 500, fontSize: '10px',
+              color: 'var(--text-tertiary)', letterSpacing: '0.08em',
+              textTransform: 'uppercase', marginBottom: '4px',
             }}>
               F1 SCORE
             </div>
             <div style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: '13px',
+              fontFamily: 'var(--font-mono)', fontSize: '13px',
               color: modelStatus?.f1_score >= 0.8 ? 'var(--green-text)' : modelStatus?.f1_score >= 0.5 ? 'var(--amber-text)' : 'var(--text-primary)',
             }}>
               {modelStatus?.f1_score?.toFixed(3) || '—'}

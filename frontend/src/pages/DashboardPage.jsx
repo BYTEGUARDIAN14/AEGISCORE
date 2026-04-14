@@ -16,20 +16,22 @@ export function DashboardPage() {
   const [recentFindings, setRecentFindings] = useState([]);
   const [selectedFinding, setSelectedFinding] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [severityData, setSeverityData] = useState([]);
 
   const fetchDashboardData = useCallback(async () => {
     try {
       const [findingsRes, scansRes] = await Promise.all([
-        listFindings({ limit: 20 }).catch(() => ({ findings: [], total: 0 })),
-        listScans({ limit: 10 }).catch(() => ({ scans: [], total: 0 })),
+        listFindings({ limit: 100 }).catch(() => ({ findings: [], total: 0 })),
+        listScans({ limit: 20 }).catch(() => ({ scans: [], total: 0 })),
       ]);
 
-      setRecentFindings(findingsRes.findings || []);
+      const findings = findingsRes.findings || [];
+      setRecentFindings(findings.slice(0, 20));
 
       // Compute stats from findings
-      const findings = findingsRes.findings || [];
       const critical = findings.filter(f => f.severity === 'CRITICAL').length;
       const high = findings.filter(f => f.severity === 'HIGH').length;
+      const medium = findings.filter(f => f.severity === 'MEDIUM').length;
 
       setStats({
         total_findings: findingsRes.total || findings.length,
@@ -38,6 +40,35 @@ export function DashboardPage() {
         files_at_risk: new Set(findings.map(f => f.file_path)).size,
         repos_count: new Set((scansRes.scans || []).map(s => s.repo_id)).size || 1,
       });
+
+      // Build severity breakdown data from scans
+      const scans = scansRes.scans || [];
+      if (scans.length > 0) {
+        // Group findings by scan and count severities
+        const scanMap = {};
+        for (const scan of scans.slice(0, 10)) {
+          scanMap[scan.id] = {
+            name: scan.branch ? `${scan.branch.slice(0, 8)}` : `Scan`,
+            critical: scan.critical_count || 0,
+            high: scan.high_count || 0,
+            medium: scan.medium_count || 0,
+          };
+        }
+        const chartData = Object.values(scanMap);
+        if (chartData.some(d => d.critical > 0 || d.high > 0 || d.medium > 0)) {
+          setSeverityData(chartData);
+        }
+      }
+
+      // If no scan-level data, derive from findings
+      if (scans.length === 0 && findings.length > 0) {
+        setSeverityData([{
+          name: 'Current',
+          critical,
+          high,
+          medium,
+        }]);
+      }
     } catch (err) {
       console.error('Failed to fetch dashboard data:', err);
       setStats({
@@ -70,7 +101,7 @@ export function DashboardPage() {
         gap: '16px',
         marginBottom: '24px',
       }}>
-        <SeverityBreakdown />
+        <SeverityBreakdown data={severityData} />
         <ActiveScans />
       </div>
 
@@ -88,10 +119,7 @@ export function DashboardPage() {
             onClick={() => setSelectedFinding(null)}
             style={{
               position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
+              top: 0, left: 0, right: 0, bottom: 0,
               backgroundColor: 'rgba(0,0,0,0.4)',
               zIndex: 199,
             }}
