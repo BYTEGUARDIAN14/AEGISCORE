@@ -62,7 +62,7 @@ services:
       OLLAMA_MODEL: codellama:7b
       ML_MODEL_PATH: /app/ml_models/risk_model.pkl
       DEBUG: "false"
-      CORS_ORIGINS: '["http://localhost:5173","http://localhost:80"]'
+      CORS_ORIGINS: '["http://localhost:5173","http://localhost:80","http://localhost"]'
     volumes:
       - model_data:/app/ml_models
       - repo_cache:/tmp/repos
