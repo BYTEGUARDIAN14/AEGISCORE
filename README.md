@@ -1041,7 +1041,7 @@ aegiscore auth login --email admin@byteaegis.in
 
 | Service | URL |
 |---------|-----|
-| React Dashboard | http://localhost:3000 |
+| React Dashboard | http://localhost (production) / http://localhost:5173 (dev) |
 | FastAPI Docs | http://localhost:8000/docs |
 | Grafana | http://localhost:3001 (admin/admin) |
 | Prometheus | http://localhost:9090 |
@@ -1067,7 +1067,7 @@ REDIS_URL=redis://localhost:6379/0
 SECRET_KEY=                     # python -c "import secrets; print(secrets.token_hex(32))"
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 REFRESH_TOKEN_EXPIRE_DAYS=7
-CORS_ORIGINS=http://localhost:3000
+CORS_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173
 
 # Celery
 CELERY_BROKER_URL=redis://localhost:6379/0
