@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
 
     # ── CORS ──────────────────────────────────────────────────────────────
-    CORS_ORIGINS: List[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:80", "http://localhost", "http://localhost:3000"]
 
     # ── Celery ────────────────────────────────────────────────────────────
     CELERY_BROKER_URL: str = "redis://localhost:6379/1"
@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     OLLAMA_TIMEOUT: int = 120
 
     # ── ML Risk Model ────────────────────────────────────────────────────
-    ML_MODEL_PATH: str = "/app/models/risk_model.pkl"
+    ML_MODEL_PATH: str = "/app/ml_models/risk_model.pkl"
     ML_RETRAIN_EVERY_N_SCANS: int = 10
     ML_MIN_TRAINING_SAMPLES: int = 50
 

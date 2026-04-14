@@ -266,7 +266,7 @@ async def get_finding(
         line_number=finding.line_number,
         message=finding.message,
         cwe=finding.cwe,
-        metadata=finding.metadata,
+        metadata=finding.metadata_,
         fix=fix_data,
         correlations=correlations_data,
     )
