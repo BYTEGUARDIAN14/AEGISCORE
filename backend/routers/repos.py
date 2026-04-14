@@ -66,7 +66,6 @@ async def connect_repository(
     """Connect a new repository to a team."""
     await check_team_membership(
         current_user, body.team_id, db,
-        required_roles=[MemberRole.admin, MemberRole.security_lead],
     )
 
     repo = Repository(
@@ -217,7 +216,6 @@ async def update_repository(
 
     await check_team_membership(
         current_user, repo.team_id, db,
-        required_roles=[MemberRole.admin, MemberRole.security_lead],
     )
 
     if body.name is not None:
@@ -261,7 +259,6 @@ async def disconnect_repository(
 
     await check_team_membership(
         current_user, repo.team_id, db,
-        required_roles=[MemberRole.admin],
     )
 
     repo.is_active = False

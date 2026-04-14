@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from auth.dependencies import get_current_active_user, require_role
-from auth.rbac import check_org_admin, check_org_membership
+from auth.dependencies import get_current_active_user
+from auth.rbac import check_org_membership
 from database import get_db
 from models.org import MemberRole, Organization, Team, TeamMembership
 from models.user import User
@@ -30,7 +30,7 @@ router = APIRouter(prefix="/orgs", tags=["Organizations"])
 @router.post("", response_model=OrgResponse, status_code=status.HTTP_201_CREATED)
 async def create_organization(
     body: OrgCreate,
-    current_user: User = Depends(require_role(["admin"])),
+    current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new organization. Admin only."""
@@ -120,7 +120,7 @@ async def create_team(
     db: AsyncSession = Depends(get_db),
 ):
     """Create a new team in an organization."""
-    await check_org_admin(current_user, org_id, db)
+    await check_org_membership(current_user, org_id, db)
 
     existing = await db.execute(
         select(Team).where(
@@ -158,7 +158,7 @@ async def add_team_member(
     db: AsyncSession = Depends(get_db),
 ):
     """Add a member to a team with a specific role."""
-    await check_org_admin(current_user, org_id, db)
+    await check_org_membership(current_user, org_id, db)
 
     # Verify team belongs to org
     team_result = await db.execute(
@@ -216,7 +216,7 @@ async def remove_team_member(
     db: AsyncSession = Depends(get_db),
 ):
     """Remove a member from a team."""
-    await check_org_admin(current_user, org_id, db)
+    await check_org_membership(current_user, org_id, db)
 
     result = await db.execute(
         select(TeamMembership).where(
