@@ -40,6 +40,7 @@ services:
 
   # ── FastAPI Backend ──────────────────────────────────────────────────────
   api:
+    image: mohamed1410/aegiscore:backend-v1.0
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -69,6 +70,7 @@ services:
 
   # ── Celery Scan Worker ───────────────────────────────────────────────────
   worker-scan:
+    image: mohamed1410/aegiscore:backend-v1.0
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -95,6 +97,7 @@ services:
 
   # ── Celery AI Worker ─────────────────────────────────────────────────────
   worker-ai:
+    image: mohamed1410/aegiscore:backend-v1.0
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -121,6 +124,7 @@ services:
 
   # ── Celery Maintenance Worker ────────────────────────────────────────────
   worker-maintenance:
+    image: mohamed1410/aegiscore:backend-v1.0
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -144,6 +148,7 @@ services:
 
   # ── React Frontend ──────────────────────────────────────────────────────
   frontend:
+    image: mohamed1410/aegiscore:frontend-v1.0
     build:
       context: ./frontend
       dockerfile: Dockerfile
