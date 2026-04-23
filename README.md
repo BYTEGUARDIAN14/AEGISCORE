@@ -1076,7 +1076,7 @@ CELERY_WORKER_CONCURRENCY=4
 
 # Ollama (local LLM)
 OLLAMA_BASE_URL=http://ollama:11434
-OLLAMA_MODEL=codellama:7b
+OLLAMA_MODEL=stable-code:3b
 OLLAMA_TIMEOUT=120              # seconds; larger repos need more time
 
 # ML Model
