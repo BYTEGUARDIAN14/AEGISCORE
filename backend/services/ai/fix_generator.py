@@ -132,30 +132,21 @@ def _build_prompt(
 
     cwe_section = f"\nCWE: {cwe}" if cwe else ""
 
-    return f"""You are a security engineer fixing a vulnerability in production code.
+    return f"""### Task: Fix the security vulnerability in the following {language} code.
+### Severity: {severity}
+### Issue: {message}
 
-VULNERABILITY DETAILS:
-  Severity: {severity}
-  Rule ID: {rule_id}
-  File: {file_path}
-  Line: {line_number}
-  Language: {language}{cwe_section}
-
-SCANNER MESSAGE:
-  {message}
-
-VULNERABLE CODE:
+### Code Context:
 ```{language}
 {code_context}
 ```
 
-INSTRUCTIONS:
-1. Provide a unified diff that fixes ONLY the security vulnerability.
-2. Do not change functionality, style, or unrelated code.
-3. Output the diff first, then a brief explanation.
-4. The diff must use standard unified diff format (--- / +++ / @@ / + / - prefixes).
+### Instructions:
+1. Provide a unified diff fixing the issue.
+2. Maintain the existing code structure.
+3. Start the output with the diff using --- and +++ markers.
 
-UNIFIED DIFF:
+### Unified Diff:
 """
 
 
