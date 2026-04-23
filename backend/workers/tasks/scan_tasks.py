@@ -31,6 +31,25 @@ def _get_sync_session():
 
 
 @celery_app.task(
+    name="workers.tasks.scan_tasks.clone_repository_task",
+    max_retries=1,
+    default_retry_delay=10,
+)
+def clone_repository_task(github_url: str, repo_path: str, branch: str = "main"):
+    """Celery task to clone a repository before scanning."""
+    import asyncio
+    from services.repo import clone_repository
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        loop.run_until_complete(clone_repository(github_url, repo_path, branch))
+        return repo_path
+    finally:
+        loop.close()
+
+
+@celery_app.task(
     name="workers.tasks.scan_tasks.run_semgrep_task",
     bind=True,
     max_retries=2,
@@ -325,14 +344,21 @@ def run_trivy_task(self, scan_task_id: str, scan_id: str, repo_path: str):
     name="workers.tasks.scan_tasks.finalize_scan_task",
     bind=True,
 )
-def finalize_scan_task(self, scanner_results: list, scan_id: str):
+def finalize_scan_task(self, *args, **kwargs):
     """
     Finalize scan after all scanners complete.
-    Called as a Celery chord callback.
-
-    Aggregates findings counts, updates Scan record, runs correlation,
-    enqueues AI tasks (risk scoring and fix generation).
+    Handles results from chord and optional arguments from chain.
     """
+    # Extract scan_id from kwargs or the last positional argument
+    scan_id = kwargs.get("scan_id")
+    if not scan_id and args:
+        scan_id = args[-1]
+    
+    if not scan_id:
+        logger.error("finalize_scan_task called without scan_id. Args: %s, Kwargs: %s", args, kwargs)
+        return
+
+    # Finalize the scan data in the database
     import asyncio
 
     db = _get_sync_session()
@@ -467,6 +493,11 @@ def finalize_scan_task(self, scanner_results: list, scan_id: str):
             except Exception as e:
                 logger.warning("Failed to send alert: %s", e)
 
+        # Cleanup: Remove cloned repository to save space
+        try:
+            import shutil
+            import os
+        # Note: Repo cleanup moved to end of AI tasks to avoid race condition
         logger.info(
             "Scan finalized: scan=%s total=%d critical=%d high=%d medium=%d low=%d",
             scan_id, total, critical, high, medium, low,
@@ -497,6 +528,63 @@ def finalize_scan_task(self, scanner_results: list, scan_id: str):
         raise
     finally:
         db.close()
+
+
+@celery_app.task(
+    name="workers.tasks.scan_tasks.post_scan_processing_task",
+    bind=True,
+)
+def post_scan_processing_task(self, scan_id: str, repo_path: str):
+    """
+    Final step in the scan chain.
+    Triggers AI tasks and then cleans up the repository.
+    """
+    import shutil
+    import os
+    from workers.tasks.ai_tasks import update_risk_scores_task, generate_fixes_task
+
+    db = _get_sync_session()
+    try:
+        from models.scan import Scan, ScanStatus
+        from models.finding import Finding, Severity
+
+        scan_uuid = UUID(scan_id)
+        findings = db.query(Finding).filter(Finding.scan_id == scan_uuid).all()
+        
+        critical = sum(1 for f in findings if f.severity == Severity.CRITICAL)
+        high = sum(1 for f in findings if f.severity == Severity.HIGH)
+
+        # Build sub-chain for AI and cleanup
+        from celery import chain as celery_chain
+        from workers.tasks.scan_tasks import cleanup_repo_task
+
+        sub_tasks = [update_risk_scores_task.si(scan_id)]
+        
+        if critical > 0 or high > 0:
+            sub_tasks.append(generate_fixes_task.si(scan_id))
+            
+        sub_tasks.append(cleanup_repo_task.si(repo_path))
+        
+        celery_chain(*sub_tasks).apply_async()
+        
+        logger.info("Post-processing chain enqueued for scan %s", scan_id)
+
+    except Exception as e:
+        logger.error("Post-processing failed for scan %s: %s", scan_id, e)
+    finally:
+        db.close()
+
+@celery_app.task(
+    name="workers.tasks.scan_tasks.cleanup_repo_task",
+    bind=True,
+)
+def cleanup_repo_task(self, repo_path: str):
+    """Remove cloned repository to save space."""
+    import shutil
+    import os
+    if os.path.exists(repo_path):
+        shutil.rmtree(repo_path)
+        logger.info("Cleaned up repo path: %s", repo_path)
 
 
 async def _run_async_correlation(scan_id: str) -> int:
