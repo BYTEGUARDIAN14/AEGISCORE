@@ -8,9 +8,9 @@ import Badge from '../ui/Badge';
 import apiClient from '../../api/client';
 import { triggerScan } from '../../api/scans';
 
-export function ScanTriggerModal({ isOpen, onClose, onTriggered }) {
+export function ScanTriggerModal({ isOpen, onClose, onTriggered, initialRepoId }) {
   const [repos, setRepos] = useState([]);
-  const [selectedRepo, setSelectedRepo] = useState('');
+  const [selectedRepo, setSelectedRepo] = useState(initialRepoId || '');
   const [branch, setBranch] = useState('main');
   const [commitSha, setCommitSha] = useState('');
   const [scanners, setScanners] = useState({
@@ -24,9 +24,11 @@ export function ScanTriggerModal({ isOpen, onClose, onTriggered }) {
 
   useEffect(() => {
     if (isOpen) {
+      // Pre-select initialRepoId if provided, else fall back to first repo
+      if (initialRepoId) setSelectedRepo(initialRepoId);
       apiClient.get('/repos').then(data => {
         setRepos(data || []);
-        if (data && data.length > 0 && !selectedRepo) {
+        if (data && data.length > 0 && !initialRepoId && !selectedRepo) {
           setSelectedRepo(data[0].id);
         }
       }).catch(() => {});
@@ -34,7 +36,7 @@ export function ScanTriggerModal({ isOpen, onClose, onTriggered }) {
       setError(null);
       setSuccess(null);
     }
-  }, [isOpen]);
+  }, [isOpen, initialRepoId]);
 
   if (!isOpen) return null;
 
@@ -50,9 +52,14 @@ export function ScanTriggerModal({ isOpen, onClose, onTriggered }) {
     setSubmitting(true);
     setError(null);
     try {
+      // Backend requires a valid 40-char hex SHA — generate one if left blank
+      const effectiveSha = commitSha.trim() || Array.from(
+        { length: 40 },
+        (_, i) => i < 32 ? '0' : Math.floor(Math.random() * 16).toString(16)
+      ).join('');
       const result = await triggerScan(
         selectedRepo,
-        commitSha || `auto-${Date.now().toString(36)}`,
+        effectiveSha,
         branch,
         selectedScanners,
       );
