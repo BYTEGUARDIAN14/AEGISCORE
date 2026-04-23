@@ -47,7 +47,7 @@ def _check_rate_limit(repo_id: UUID) -> bool:
         r = _get_redis_client()
         key = f"aegiscore:scan_rate:{repo_id}"
         current = r.get(key)
-        if current is not None and int(current) >= 10:
+        if current is not None and int(current) >= 15:
             return True
         pipe = r.pipeline()
         pipe.incr(key)
@@ -91,7 +91,7 @@ async def trigger_scan(
     if _check_rate_limit(body.repo_id):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded: maximum 10 scans per hour per repository",
+            detail="Rate limit exceeded: maximum 15 scans per hour per repository",
         )
 
     # Create scan record
@@ -118,15 +118,17 @@ async def trigger_scan(
 
     await db.commit()
 
-    # Enqueue Celery tasks (import here to avoid circular deps)
+    # Enqueue Celery tasks
     try:
         from workers.tasks.scan_tasks import (
+            clone_repository_task,
             run_bandit_task,
             run_semgrep_task,
             run_trivy_task,
             finalize_scan_task,
+            post_scan_processing_task,
         )
-        from celery import chord
+        from celery import chord, chain
 
         repo_path = f"/tmp/repos/{repo.name}"
         scanner_tasks = []
@@ -134,26 +136,33 @@ async def trigger_scan(
         task_idx = 0
         for scanner_name in body.scanners:
             task_id = str(task_ids[task_idx])
-            scan_id = str(scan.id)
+            scan_id_str = str(scan.id)
 
             if scanner_name == "semgrep":
                 scanner_tasks.append(
-                    run_semgrep_task.s(task_id, scan_id, repo_path, settings.SEMGREP_RULES)
+                    run_semgrep_task.si(task_id, scan_id_str, repo_path, settings.SEMGREP_RULES)
                 )
             elif scanner_name == "bandit":
                 scanner_tasks.append(
-                    run_bandit_task.s(task_id, scan_id, repo_path)
+                    run_bandit_task.si(task_id, scan_id_str, repo_path)
                 )
             elif scanner_name == "trivy":
                 scanner_tasks.append(
-                    run_trivy_task.s(task_id, scan_id, repo_path)
+                    run_trivy_task.si(task_id, scan_id_str, repo_path)
                 )
             task_idx += 1
 
-        chord(scanner_tasks)(finalize_scan_task.s(scan_id))
-    except ImportError:
-        # Celery not available — scan stays queued
-        pass
+        # Chain: Clone -> (Parallel Scanners) -> Finalize -> Post Processing (AI + Cleanup)
+        # Note: chord(header, body) is the signature for a chord
+        workflow = chain(
+            clone_repository_task.s(repo.github_url, repo_path, body.branch),
+            chord(scanner_tasks, finalize_scan_task.si(scan_id=scan_id_str)),
+            post_scan_processing_task.si(scan_id=scan_id_str, repo_path=repo_path)
+        )
+        workflow.apply_async()
+    except Exception as e:
+        import logging
+        logging.getLogger("aegiscore").error(f"Failed to enqueue scan: {e}")
 
     return ScanTriggerResponse(
         scan_id=scan.id,
