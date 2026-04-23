@@ -80,7 +80,17 @@ class ApiClient {
       } catch {
         errorData = { detail: response.statusText };
       }
-      const error = new Error(errorData.detail || `HTTP ${response.status}`);
+      // FastAPI 422s return detail as an array of validation error objects.
+      // Normalize to a human-readable string for all cases.
+      let detail = errorData.detail;
+      if (Array.isArray(detail)) {
+        detail = detail
+          .map(e => `${e.loc ? e.loc.slice(1).join('.') + ': ' : ''}${e.msg}`)
+          .join('; ');
+      } else if (typeof detail !== 'string') {
+        detail = JSON.stringify(detail);
+      }
+      const error = new Error(detail || `HTTP ${response.status}`);
       error.status = response.status;
       error.data = errorData;
       throw error;
