@@ -10,6 +10,7 @@ import Badge from '../components/ui/Badge';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import EmptyState from '../components/ui/EmptyState';
+import ScanTriggerModal from '../components/dashboard/ScanTriggerModal';
 import apiClient from '../api/client';
 import { getRiskHeatmap } from '../api/risk';
 import { listScans } from '../api/scans';
@@ -240,6 +241,14 @@ function RepoDetailView({ repoId }) {
   const [riskFiles, setRiskFiles] = useState([]);
   const [scans, setScans] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+
+  const fetchScans = useCallback(async () => {
+    try {
+      const scansData = await listScans({ repo_id: repoId, limit: 10 });
+      setScans(scansData.scans || []);
+    } catch {}
+  }, [repoId]);
 
   useEffect(() => {
     async function fetchData() {
@@ -259,7 +268,14 @@ function RepoDetailView({ repoId }) {
       }
     }
     fetchData();
-  }, [repoId]);
+
+    // Set up polling for scan status
+    const pollInterval = setInterval(() => {
+      fetchScans();
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [repoId, fetchScans]);
 
   const repoStats = repo?.last_scan ? {
     total_findings: repo.last_scan.total_findings,
@@ -271,17 +287,27 @@ function RepoDetailView({ repoId }) {
 
   return (
     <div>
-      {/* Repo Title */}
-      <div style={{ marginBottom: '24px' }}>
-        <h1 style={{
-          fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '16px',
-          color: 'var(--text-primary)', marginBottom: '4px',
-        }}>
-          {repo?.name || 'Repository'}
-        </h1>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-tertiary)' }}>
-          {repo?.default_branch || 'main'} • {repo?.github_url || ''}
-        </span>
+      {/* Repo Title + New Scan button */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
+        <div>
+          <h1 style={{
+            fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: '16px',
+            color: 'var(--text-primary)', marginBottom: '4px',
+          }}>
+            {repo?.name || 'Repository'}
+          </h1>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: 'var(--text-tertiary)' }}>
+            {repo?.default_branch || 'main'} • {repo?.github_url || ''}
+          </span>
+        </div>
+        <Button variant="primary" onClick={() => setScanModalOpen(true)}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M6 2V10M2 6H10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            New Scan
+          </span>
+        </Button>
       </div>
 
       {/* Stats */}
@@ -329,6 +355,17 @@ function RepoDetailView({ repoId }) {
           ))
         )}
       </Card>
+
+      <ScanTriggerModal
+        isOpen={scanModalOpen}
+        onClose={() => setScanModalOpen(false)}
+        initialRepoId={repoId}
+        onTriggered={() => {
+          setScanModalOpen(false);
+          // Refresh scan list after triggering
+          setTimeout(fetchScans, 800);
+        }}
+      />
     </div>
   );
 }
