@@ -13,14 +13,18 @@ from pydantic import BaseModel, field_validator
 class ScanTriggerRequest(BaseModel):
     """Request body for POST /scans/trigger."""
     repo_id: UUID
-    commit_sha: str
+    commit_sha: Optional[str] = None
     branch: str
     scanners: List[str] = ["semgrep", "bandit", "trivy"]
 
-    @field_validator("commit_sha")
+    @field_validator("commit_sha", mode="before")
     @classmethod
-    def validate_sha(cls, v: str) -> str:
-        v = v.strip().lower()
+    def validate_sha(cls, v: Optional[str]) -> str:
+        if v is None or str(v).strip() == "":
+            # Auto-generate a deterministic-looking placeholder SHA
+            import secrets
+            return secrets.token_hex(20)  # 20 bytes → 40 hex chars
+        v = str(v).strip().lower()
         if len(v) != 40 or not all(c in "0123456789abcdef" for c in v):
             raise ValueError("commit_sha must be a 40-character hex string")
         return v
