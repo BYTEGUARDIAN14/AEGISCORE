@@ -48,7 +48,7 @@ class Settings(BaseSettings):
 
     # ── Ollama (Local LLM) ───────────────────────────────────────────────
     OLLAMA_BASE_URL: str = "http://ollama:11434"
-    OLLAMA_MODEL: str = "codellama:7b"
+    OLLAMA_MODEL: str = "stable-code:3b"
     OLLAMA_TIMEOUT: int = 120
 
     # ── ML Risk Model ────────────────────────────────────────────────────
