@@ -54,17 +54,19 @@ services:
       redis:
         condition: service_healthy
     environment:
+      PYTHONPATH: /app
       DATABASE_URL: postgresql+asyncpg://aegiscore:aegiscore_secret@db:5432/aegiscore
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       SECRET_KEY: change-me-in-production-use-a-strong-key
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: codellama:7b
+      OLLAMA_MODEL: stable-code:3b
       ML_MODEL_PATH: /app/ml_models/risk_model.pkl
       DEBUG: "false"
       CORS_ORIGINS: '["http://localhost:5173","http://localhost:80","http://localhost"]'
     volumes:
+      - ./backend:/app
       - model_data:/app/ml_models
       - repo_cache:/tmp/repos
 
@@ -83,6 +85,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      PYTHONPATH: /app
       DATABASE_URL: postgresql+asyncpg://aegiscore:aegiscore_secret@db:5432/aegiscore
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
@@ -90,8 +93,9 @@ services:
       SECRET_KEY: change-me-in-production-use-a-strong-key
       ML_MODEL_PATH: /app/ml_models/risk_model.pkl
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: codellama:7b
+      OLLAMA_MODEL: stable-code:3b
     volumes:
+      - ./backend:/app
       - model_data:/app/ml_models
       - repo_cache:/tmp/repos
 
@@ -110,6 +114,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      PYTHONPATH: /app
       DATABASE_URL: postgresql+asyncpg://aegiscore:aegiscore_secret@db:5432/aegiscore
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
@@ -117,8 +122,9 @@ services:
       SECRET_KEY: change-me-in-production-use-a-strong-key
       ML_MODEL_PATH: /app/ml_models/risk_model.pkl
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: codellama:7b
+      OLLAMA_MODEL: stable-code:3b
     volumes:
+      - ./backend:/app
       - model_data:/app/ml_models
       - repo_cache:/tmp/repos
 
@@ -137,6 +143,7 @@ services:
       redis:
         condition: service_healthy
     environment:
+      PYTHONPATH: /app
       DATABASE_URL: postgresql+asyncpg://aegiscore:aegiscore_secret@db:5432/aegiscore
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/1
@@ -144,6 +151,7 @@ services:
       SECRET_KEY: change-me-in-production-use-a-strong-key
       ML_MODEL_PATH: /app/ml_models/risk_model.pkl
     volumes:
+      - ./backend:/app
       - model_data:/app/ml_models
 
   # ── React Frontend ──────────────────────────────────────────────────────
