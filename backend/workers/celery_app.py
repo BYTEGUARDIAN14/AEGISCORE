@@ -7,13 +7,13 @@ from celery import Celery
 
 from config import settings
 
-celery_app = Celery(
+app = Celery(
     "aegiscore",
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
 )
 
-celery_app.conf.update(
+app.conf.update(
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
@@ -33,9 +33,16 @@ celery_app.conf.update(
     task_default_queue="scans",
     task_default_exchange="aegiscore",
     task_default_routing_key="scans",
+    # Explicitly import tasks
+    imports=[
+        "workers.tasks.scan_tasks",
+        "workers.tasks.ai_tasks",
+        "workers.tasks.maintenance_tasks",
+    ],
 )
 
-# Auto-discover tasks
-celery_app.autodiscover_tasks([
-    "workers.tasks",
-])
+# Alias for backwards compatibility if needed
+celery_app = app
+
+
+
