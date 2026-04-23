@@ -30,7 +30,7 @@ export function ActiveScans() {
     }
   }, []);
 
-  usePolling(fetchScans, 10000, true);
+  usePolling(fetchScans, 3000, true);
 
   const getProgress = (scan) => {
     if (scan.status === 'completed') return 100;
