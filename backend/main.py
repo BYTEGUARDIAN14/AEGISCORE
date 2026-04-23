@@ -46,11 +46,23 @@ app = FastAPI(
         "cross-repo correlation. Zero data egress."
     ),
     version=settings.APP_VERSION,
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
     lifespan=lifespan,
 )
+
+# ── Root Route ──────────────────────────────────────────────────────────────
+@app.get("/", tags=["General"])
+async def root():
+    """Welcome endpoint with service info."""
+    return {
+        "message": f"Welcome to {settings.APP_NAME}",
+        "version": settings.APP_VERSION,
+        "docs": "/docs",
+        "health": "/health",
+    }
+
 
 # ── CORS Middleware ─────────────────────────────────────────────────────────
 app.add_middleware(
