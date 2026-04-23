@@ -32,7 +32,7 @@ class FixConfidence(str, enum.Enum):
 class FixSuggestion(Base):
     """
     An AI-generated code fix for a specific finding.
-    Generated locally via Ollama (codellama:7b) with zero data egress.
+    Generated locally via Ollama (stable-code:3b) with zero data egress.
     Contains unified diff, human-readable explanation, and confidence level.
     """
     __tablename__ = "fix_suggestions"
