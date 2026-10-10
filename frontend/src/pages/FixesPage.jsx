@@ -86,7 +86,13 @@ export function FixesPage() {
           </button>
           <FixReview
             fix={selectedFix}
-            finding={selectedFix._finding}
+            finding={selectedFix._finding || {
+              severity: selectedFix.severity || 'high',
+              file_path: selectedFix.file_path || 'File path unavailable',
+              line_number: selectedFix.line_number || 1,
+              rule_id: selectedFix.rule_id || 'VULN_RULE',
+              message: selectedFix.explanation || 'Vulnerability remediation proposal',
+            }}
             onApplied={() => fetchFixes()}
           />
         </div>
@@ -119,19 +125,43 @@ export function FixesPage() {
               onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
             >
+              <Badge severity={fix.severity || 'high'} />
               <Badge status={fix.confidence}>{fix.confidence}</Badge>
 
-              <span style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
-                color: 'var(--text-secondary)',
-                flex: 1,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}>
-                {fix.finding_id?.slice(0, 8)}...
-              </span>
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: 'var(--text-primary)',
+                  }}>
+                    {fix.rule_id || 'SECURITY-ISSUE'}
+                  </span>
+                  <span style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px',
+                    color: 'var(--text-secondary)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {fix.file_path ? `${fix.file_path}:${fix.line_number}` : `${fix.finding_id?.slice(0, 8)}...`}
+                  </span>
+                </div>
+                {fix.explanation && (
+                  <span style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '11px',
+                    color: 'var(--text-tertiary)',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {fix.explanation}
+                  </span>
+                )}
+              </div>
 
               <span style={{
                 fontFamily: 'var(--font-mono)',
@@ -146,6 +176,7 @@ export function FixesPage() {
                   fontFamily: 'var(--font-sans)',
                   fontSize: '11px',
                   color: 'var(--green-text)',
+                  fontWeight: 500,
                 }}>
                   Applied
                 </span>
@@ -164,7 +195,7 @@ export function FixesPage() {
                 fontSize: '11px',
                 color: 'var(--text-tertiary)',
               }}>
-                {new Date(fix.generated_at).toLocaleDateString()}
+                {fix.generated_at ? new Date(fix.generated_at).toLocaleDateString() : ''}
               </span>
             </div>
           ))}
