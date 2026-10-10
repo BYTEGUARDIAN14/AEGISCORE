@@ -14,3 +14,7 @@ export async function getRiskHistory(repoId, filePath, days = 30) {
 export async function getModelStatus() {
   return apiClient.get('/risk/model/status');
 }
+
+export async function retrainModel() {
+  return apiClient.post('/risk/model/retrain');
+}
