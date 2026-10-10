@@ -18,7 +18,7 @@ class RiskFileScore(BaseModel):
     feature_snapshot: Dict[str, Any] = {}
     risk_level: str = ""
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
 
     def model_post_init(self, __context: Any) -> None:
         if not self.risk_level:
@@ -65,3 +65,5 @@ class ModelStatusResponse(BaseModel):
     f1_score: float = 0.0
     is_trained: bool = False
     next_retrain_in: int = 0
+
+    model_config = {"protected_namespaces": ()}
