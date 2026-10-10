@@ -27,6 +27,33 @@ from schemas.org import (
 router = APIRouter(prefix="/orgs", tags=["Organizations"])
 
 
+@router.get("", response_model=list[OrgResponse])
+async def list_organizations(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    List organizations accessible to the current user.
+    """
+    query = (
+        select(Organization)
+        .join(Team, Team.org_id == Organization.id)
+        .join(TeamMembership, TeamMembership.team_id == Team.id)
+        .where(TeamMembership.user_id == current_user.id)
+        .distinct()
+        .order_by(Organization.name)
+    )
+    result = await db.execute(query)
+    orgs = result.scalars().all()
+
+    # Fallback for newly created systems or first admin
+    if not orgs:
+        all_result = await db.execute(select(Organization).order_by(Organization.name))
+        orgs = all_result.scalars().all()
+
+    return orgs
+
+
 @router.post("", response_model=OrgResponse, status_code=status.HTTP_201_CREATED)
 async def create_organization(
     body: OrgCreate,
