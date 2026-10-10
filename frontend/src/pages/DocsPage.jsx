@@ -12,8 +12,11 @@ const API_ENDPOINTS = [
     { method: 'POST', path: '/auth/login', desc: 'Authenticate and get JWT tokens', auth: false },
     { method: 'POST', path: '/auth/refresh', desc: 'Exchange refresh token for new access token', auth: false },
     { method: 'GET', path: '/auth/me', desc: 'Get current user profile', auth: true },
+    { method: 'PUT', path: '/auth/me', desc: 'Update current user profile', auth: true },
+    { method: 'POST', path: '/auth/change-password', desc: 'Change user account password', auth: true },
   ]},
   { group: 'Organizations', endpoints: [
+    { method: 'GET', path: '/orgs', desc: 'List organizations accessible to current user', auth: true },
     { method: 'POST', path: '/orgs', desc: 'Create new organization (admin only)', auth: true },
     { method: 'GET', path: '/orgs/{org_id}', desc: 'Get organization details', auth: true },
     { method: 'GET', path: '/orgs/{org_id}/teams', desc: 'List teams in organization', auth: true },
@@ -42,9 +45,11 @@ const API_ENDPOINTS = [
     { method: 'GET', path: '/risk/heatmap', desc: 'Get file risk scores for a repository', auth: true },
     { method: 'GET', path: '/risk/history', desc: 'Get risk score history for a specific file', auth: true },
     { method: 'GET', path: '/risk/model/status', desc: 'Get ML model version and accuracy metrics', auth: true },
+    { method: 'POST', path: '/risk/model/retrain', desc: 'Trigger ML risk model retraining', auth: true },
   ]},
   { group: 'Fixes', endpoints: [
     { method: 'GET', path: '/fixes', desc: 'List AI-generated fix suggestions', auth: true },
+    { method: 'POST', path: '/fixes/generate', desc: 'Generate AI fix suggestion on demand', auth: true },
     { method: 'POST', path: '/fixes/{fix_id}/apply', desc: 'Mark a fix suggestion as applied', auth: true },
   ]},
   { group: 'Correlations', endpoints: [
