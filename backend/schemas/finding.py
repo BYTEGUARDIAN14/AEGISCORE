@@ -56,7 +56,7 @@ class FixSummary(BaseModel):
     applied: bool
     applied_at: Optional[datetime] = None
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
 
 
 class CorrelationLink(BaseModel):
