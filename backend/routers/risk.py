@@ -196,3 +196,52 @@ async def get_model_status(
             is_trained=False,
             next_retrain_in=settings.ML_RETRAIN_EVERY_N_SCANS,
         )
+
+
+@router.post("/model/retrain")
+async def trigger_model_retrain(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Trigger ML model retraining on-demand."""
+    try:
+        from workers.tasks.maintenance_tasks import retrain_model_task
+        task = retrain_model_task.delay()
+        return {
+            "status": "queued",
+            "task_id": str(task.id),
+            "message": "Model retraining task queued successfully",
+        }
+    except Exception as e:
+        # Fallback inline retraining if Celery is not active in dev/test
+        from services.ai.risk_model import RiskModel
+        from models.risk import RiskScore
+        from models.finding import Finding
+
+        scores_result = await db.execute(select(RiskScore))
+        risk_scores = scores_result.scalars().all()
+
+        if len(risk_scores) < 5:
+            return {
+                "status": "skipped",
+                "message": f"Insufficient data: {len(risk_scores)} samples available. Need at least 5 for training.",
+            }
+
+        training_data = []
+        for rs in risk_scores:
+            features = rs.feature_snapshot.copy() if rs.feature_snapshot else {}
+            features["had_vuln_next_scan"] = rs.score >= 0.5
+            training_data.append(features)
+
+        model = RiskModel(settings.ML_MODEL_PATH)
+        metrics = model.train(training_data)
+
+        return {
+            "status": "completed",
+            "model_version": metrics["model_version"],
+            "training_samples": metrics["training_samples"],
+            "f1_score": metrics["f1_score"],
+            "precision": metrics["precision"],
+            "recall": metrics["recall"],
+        }
+
