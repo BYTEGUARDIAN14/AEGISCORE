@@ -6,7 +6,7 @@ ML-powered per-file vulnerability risk scoring and trend tracking.
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, String
+from sqlalchemy import Column, DateTime, Float, ForeignKey, JSON, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import relationship
 
@@ -40,7 +40,7 @@ class RiskScore(Base):
         nullable=False,
     )
     model_version = Column(String(50), nullable=False)
-    feature_snapshot = Column(JSONB, default=dict, nullable=False)
+    feature_snapshot = Column(JSON().with_variant(JSONB, "postgresql"), default=dict, nullable=False)
 
     # Relationships
     repository = relationship("Repository", back_populates="risk_scores")
