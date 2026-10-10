@@ -4,6 +4,7 @@ Self-Hosted AI Security Intelligence Platform
 Author: Mohamed Adhnaan J M | BYTEAEGIS
 """
 
+import os
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,7 +16,11 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"),
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"),
+            ".env",
+        ),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
@@ -26,8 +31,10 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     POSTGRES_DB: str = "aegiscore"
     POSTGRES_USER: str = "aegiscore"
-    POSTGRES_PASSWORD: str = "aegiscore"
-    DATABASE_URL: str = "postgresql+asyncpg://aegiscore:aegiscore@localhost:5432/aegiscore"
+    POSTGRES_PASSWORD: str = "aegiscore_secret"
+    DATABASE_URL: str = (
+        f"sqlite+aiosqlite:///{os.path.join(os.path.dirname(os.path.abspath(__file__)), 'aegiscore.db').replace(chr(92), '/')}"
+    )
 
     # ── Redis ─────────────────────────────────────────────────────────────
     REDIS_URL: str = "redis://localhost:6379/0"
@@ -52,7 +59,11 @@ class Settings(BaseSettings):
     OLLAMA_TIMEOUT: int = 120
 
     # ── ML Risk Model ────────────────────────────────────────────────────
-    ML_MODEL_PATH: str = "/app/ml_models/risk_model.pkl"
+    ML_MODEL_PATH: str = (
+        "/app/ml_models/risk_model.pkl"
+        if os.path.exists("/app")
+        else os.path.join(os.path.dirname(os.path.abspath(__file__)), "ml_models", "risk_model.pkl")
+    )
     ML_RETRAIN_EVERY_N_SCANS: int = 10
     ML_MIN_TRAINING_SAMPLES: int = 50
 
