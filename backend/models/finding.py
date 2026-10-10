@@ -13,6 +13,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
+    JSON,
     String,
     Text,
 )
@@ -60,7 +61,7 @@ class Finding(Base):
     line_number = Column(Integer, nullable=False)
     message = Column(Text, nullable=False)
     cwe = Column(String(20), nullable=True)
-    metadata_ = Column("metadata", JSONB, default=dict, nullable=False)
+    metadata_ = Column("metadata", JSON().with_variant(JSONB, "postgresql"), default=dict, nullable=False)
 
     # Relationships
     scan = relationship("Scan", back_populates="findings")
