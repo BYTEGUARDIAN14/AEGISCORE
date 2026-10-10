@@ -3,6 +3,7 @@ AEGISCORE — Risk Router
 Risk heatmap, history, and ML model status endpoints.
 """
 
+import os
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
@@ -150,6 +151,19 @@ async def get_risk_history(
     )
 
 
+def _get_model_path() -> str:
+    candidates = [
+        settings.ML_MODEL_PATH,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ml_models", "risk_model.pkl"),
+        os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models", "risk_model.pkl"),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "models", "risk_model.pkl"),
+    ]
+    for c in candidates:
+        if os.path.exists(c):
+            return c
+    return settings.ML_MODEL_PATH
+
+
 @router.get("/model/status", response_model=ModelStatusResponse)
 async def get_model_status(
     current_user: User = Depends(get_current_active_user),
@@ -162,7 +176,7 @@ async def get_model_status(
     try:
         from services.ai.risk_model import RiskModel
 
-        model = RiskModel(settings.ML_MODEL_PATH)
+        model = RiskModel(_get_model_path())
 
         if model.is_trained():
             metadata = model.get_metadata()
@@ -205,6 +219,12 @@ async def trigger_model_retrain(
 ):
     """Trigger ML model retraining on-demand."""
     try:
+        # Probe Redis broker connectivity with short timeout
+        import redis as redis_lib
+        r = redis_lib.from_url(settings.CELERY_BROKER_URL, socket_connect_timeout=0.5)
+        r.ping()
+        r.close()
+
         from workers.tasks.maintenance_tasks import retrain_model_task
         task = retrain_model_task.delay()
         return {
@@ -212,8 +232,8 @@ async def trigger_model_retrain(
             "task_id": str(task.id),
             "message": "Model retraining task queued successfully",
         }
-    except Exception as e:
-        # Fallback inline retraining if Celery is not active in dev/test
+    except Exception:
+        # Fallback inline retraining if Celery/Redis is not active in dev/test
         from services.ai.risk_model import RiskModel
         from models.risk import RiskScore
         from models.finding import Finding
@@ -233,7 +253,8 @@ async def trigger_model_retrain(
             features["had_vuln_next_scan"] = rs.score >= 0.5
             training_data.append(features)
 
-        model = RiskModel(settings.ML_MODEL_PATH)
+        model_path = _get_model_path()
+        model = RiskModel(model_path)
         metrics = model.train(training_data)
 
         return {
