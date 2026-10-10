@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 import RiskHeatmap from '../components/risk/RiskHeatmap';
 import RiskTrendChart from '../components/risk/RiskTrendChart';
 import Card from '../components/ui/Card';
-import { getRiskHeatmap, getRiskHistory, getModelStatus } from '../api/risk';
+import Button from '../components/ui/Button';
+import { getRiskHeatmap, getRiskHistory, getModelStatus, retrainModel } from '../api/risk';
 import apiClient from '../api/client';
 
 export function RiskPage() {
@@ -17,6 +18,23 @@ export function RiskPage() {
   const [trendData, setTrendData] = useState([]);
   const [trendFiles, setTrendFiles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [retraining, setRetraining] = useState(false);
+  const [retrainMsg, setRetrainMsg] = useState(null);
+
+  const handleRetrain = async () => {
+    setRetraining(true);
+    setRetrainMsg(null);
+    try {
+      const res = await retrainModel();
+      setRetrainMsg(res.message || 'Model retrained successfully');
+      const updated = await getModelStatus();
+      setModelStatus(updated);
+    } catch (err) {
+      setRetrainMsg(`Retrain failed: ${err.message || 'Unknown error'}`);
+    } finally {
+      setRetraining(false);
+    }
+  };
 
   useEffect(() => {
     async function fetchRepos() {
@@ -132,13 +150,39 @@ export function RiskPage() {
       {/* ML Model Status */}
       <Card>
         <div style={{
-          fontFamily: 'var(--font-sans)',
-          fontWeight: 600,
-          fontSize: '13px',
-          color: 'var(--text-primary)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
           marginBottom: '16px',
         }}>
-          ML Model Status
+          <div>
+            <div style={{
+              fontFamily: 'var(--font-sans)',
+              fontWeight: 600,
+              fontSize: '13px',
+              color: 'var(--text-primary)',
+            }}>
+              ML Model Status
+            </div>
+            {retrainMsg && (
+              <div style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '11px',
+                color: retrainMsg.includes('failed') ? 'var(--red-text)' : 'var(--green-text)',
+                marginTop: '4px',
+              }}>
+                {retrainMsg}
+              </div>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            loading={retraining}
+            onClick={handleRetrain}
+            style={{ fontSize: '11px', padding: '4px 10px' }}
+          >
+            Retrain Model
+          </Button>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
