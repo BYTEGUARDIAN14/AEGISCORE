@@ -25,6 +25,13 @@ from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 console = Console()
 
 API_BASE = os.environ.get("AEGISCORE_API_URL", "http://localhost:8000/api/v1")
@@ -440,7 +447,7 @@ def findings_cmd(repo_id, severity, scanner, rule, limit):
         sev = f.get("severity", "?")
         color = sev_colors.get(sev, "white")
         loc = f"{f.get('file_path', '?')}:{f.get('line_number', 0)}"
-        fix_badge = "[green]✓[/green]" if f.get("has_fix") else "[dim]—[/dim]"
+        fix_badge = "[green]YES[/green]" if f.get("has_fix") else "[dim]-[/dim]"
         table.add_row(
             f"[{color}]{sev}[/{color}]",
             loc[:48],
@@ -498,7 +505,7 @@ def predict_cmd(repo_id, top, min_score, target_file):
             cat = "MINIMAL RISK"
 
         bar_len = int(score * 15)
-        bar = "█" * bar_len + "░" * (15 - bar_len)
+        bar = "#" * bar_len + "-" * (15 - bar_len)
 
         table.add_row(
             f.get("file_path", "")[:45],
@@ -516,7 +523,7 @@ def predict_cmd(repo_id, top, min_score, target_file):
 @click.option("--limit", default=20, help="Max results")
 def risk_cmd(repo_id, min_score, limit):
     """Display risk heatmap for a repository (alias for predict)."""
-    predict_cmd(repo_id=repo_id, top=limit, min_score=min_score, target_file=None)
+    click.get_current_context().invoke(predict_cmd, repo_id=repo_id, top=limit, min_score=min_score, target_file=None)
 
 
 # ── AI Fix Generation Commands ──────────────────────────────────────────────
@@ -703,7 +710,7 @@ def report_cmd(repo_id, scan_id, export_format, output_file):
         report_str = "\n".join(lines)
     else:
         # Table format to terminal
-        findings_cmd(repo_id=repo_id, severity=None, scanner=None, rule=None, limit=50)
+        click.get_current_context().invoke(findings_cmd, repo_id=repo_id, severity=None, scanner=None, rule=None, limit=50)
         return
 
     if output_file:
