@@ -10,3 +10,7 @@ export async function listFixes(params = {}) {
 export async function applyFix(fixId) {
   return apiClient.post(`/fixes/${fixId}/apply`);
 }
+
+export async function generateFix(findingId) {
+  return apiClient.post('/fixes/generate', { finding_id: findingId });
+}
