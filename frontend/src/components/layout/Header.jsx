@@ -4,6 +4,7 @@
  */
 import { useLocation } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useOrg } from '../../hooks/useOrg';
 
 const PAGE_TITLES = {
   '/dashboard': 'Overview',
@@ -18,6 +19,7 @@ const PAGE_TITLES = {
 
 export function Header({ onNewScan }) {
   const location = useLocation();
+  const { currentOrg, orgName } = useOrg();
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -42,15 +44,31 @@ export function Header({ onNewScan }) {
       alignItems: 'center',
       justifyContent: 'space-between',
     }}>
-      {/* Breadcrumb */}
-      <span style={{
-        fontFamily: 'var(--font-sans)',
-        fontWeight: 500,
-        fontSize: '13px',
-        color: 'var(--text-secondary)',
-      }}>
-        {pageTitle}
-      </span>
+      {/* Breadcrumb + Active Org */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <span style={{
+          fontFamily: 'var(--font-sans)',
+          fontWeight: 600,
+          fontSize: '13px',
+          color: 'var(--text-primary)',
+        }}>
+          {pageTitle}
+        </span>
+        {currentOrg && (
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10px',
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid var(--border-default)',
+            color: 'var(--text-secondary)',
+            padding: '2px 8px',
+            borderRadius: '4px',
+            letterSpacing: '0.04em',
+          }}>
+            {orgName}
+          </span>
+        )}
+      </div>
 
       {/* Actions + Status */}
       <div style={{
