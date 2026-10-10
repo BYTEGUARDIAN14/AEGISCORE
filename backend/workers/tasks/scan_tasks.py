@@ -440,16 +440,6 @@ def finalize_scan_task(self, *args, **kwargs):
         except Exception as e:
             logger.warning("Correlation failed for scan %s: %s", scan_id, e)
 
-        # Enqueue AI tasks
-        from workers.tasks.ai_tasks import (
-            update_risk_scores_task,
-            generate_fixes_task,
-        )
-        update_risk_scores_task.delay(scan_id)
-
-        if critical > 0 or high > 0:
-            generate_fixes_task.delay(scan_id)
-
         # Check if model retrain is needed
         from config import settings
         from services.ai.risk_model import RiskModel
@@ -493,11 +483,6 @@ def finalize_scan_task(self, *args, **kwargs):
             except Exception as e:
                 logger.warning("Failed to send alert: %s", e)
 
-        # Cleanup: Remove cloned repository to save space
-        try:
-            import shutil
-            import os
-        # Note: Repo cleanup moved to end of AI tasks to avoid race condition
         logger.info(
             "Scan finalized: scan=%s total=%d critical=%d high=%d medium=%d low=%d",
             scan_id, total, critical, high, medium, low,
