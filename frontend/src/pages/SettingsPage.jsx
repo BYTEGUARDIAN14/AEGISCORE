@@ -53,18 +53,24 @@ export function SettingsPage() {
   }, []);
 
   const fetchOrgs = useCallback(async () => {
-    // We don't have a list-all-orgs endpoint, but if user has an org, we can fetch it
-    if (currentOrg?.id) {
-      try {
-        const org = await apiClient.get(`/orgs/${currentOrg.id}`);
-        setOrgs(org ? [org] : []);
-        const orgTeams = await apiClient.get(`/orgs/${currentOrg.id}/teams`);
-        setTeams(orgTeams || []);
-      } catch {
-        // user may not have org permissions
+    try {
+      const orgList = await apiClient.get('/orgs');
+      const list = Array.isArray(orgList) ? orgList : [];
+      setOrgs(list);
+
+      const active = currentOrg?.id ? list.find(o => o.id === currentOrg.id) || list[0] : list[0];
+      if (active && (!currentOrg || currentOrg.id !== active.id)) {
+        selectOrg({ id: active.id, name: active.name, slug: active.slug });
       }
+
+      if (active?.id) {
+        const orgTeams = await apiClient.get(`/orgs/${active.id}/teams`);
+        setTeams(orgTeams || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch orgs:', err);
     }
-  }, [currentOrg]);
+  }, [currentOrg, selectOrg]);
 
   useEffect(() => { fetchHealth(); }, [fetchHealth]);
   useEffect(() => { fetchOrgs(); }, [fetchOrgs]);
@@ -331,15 +337,39 @@ export function SettingsPage() {
           </div>
           {pwdError && <div style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: 'var(--red-text)', marginBottom: '8px' }}>{pwdError}</div>}
           {pwdSuccess && <div style={{ fontFamily: 'var(--font-sans)', fontSize: '12px', color: 'var(--green-text)', marginBottom: '8px' }}>Password updated successfully</div>}
-          <Button variant="ghost" onClick={() => {
-            setPwdError(null);
-            setPwdSuccess(false);
-            if (!currentPassword || !newPassword) { setPwdError('All fields required'); return; }
-            if (newPassword !== confirmPassword) { setPwdError('Passwords do not match'); return; }
-            if (newPassword.length < 8) { setPwdError('Password must be at least 8 characters'); return; }
-            setPwdSuccess(true);
-            setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
-          }}>Update Password</Button>
+          <Button
+            variant="primary"
+            onClick={async () => {
+              setPwdError(null);
+              setPwdSuccess(false);
+              if (!currentPassword || !newPassword) {
+                setPwdError('All fields required');
+                return;
+              }
+              if (newPassword !== confirmPassword) {
+                setPwdError('Passwords do not match');
+                return;
+              }
+              if (newPassword.length < 8) {
+                setPwdError('Password must be at least 8 characters');
+                return;
+              }
+              try {
+                await apiClient.post('/auth/change-password', {
+                  current_password: currentPassword,
+                  new_password: newPassword,
+                });
+                setPwdSuccess(true);
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+              } catch (err) {
+                setPwdError(err.message || 'Failed to update password');
+              }
+            }}
+          >
+            Update Password
+          </Button>
         </Card>
       </div>
 
