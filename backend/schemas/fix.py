@@ -21,8 +21,18 @@ class FixResponse(BaseModel):
     generated_at: datetime
     applied: bool
     applied_at: Optional[datetime] = None
+    file_path: Optional[str] = None
+    line_number: Optional[int] = None
+    severity: Optional[str] = None
+    rule_id: Optional[str] = None
 
-    model_config = {"from_attributes": True}
+    model_config = {"from_attributes": True, "protected_namespaces": ()}
+
+
+class FixGenerateRequest(BaseModel):
+    """Request body for generating a fix on-demand."""
+    finding_id: UUID
+
 
 
 class FixApplyResponse(BaseModel):
