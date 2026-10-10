@@ -17,10 +17,12 @@ from database import get_db
 from models.user import User
 from schemas.auth import (
     AccessTokenResponse,
+    ChangePasswordRequest,
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
     TokenResponse,
+    UpdateProfileRequest,
     UserProfile,
 )
 
@@ -156,3 +158,37 @@ async def get_me(
 ):
     """Return the current authenticated user's profile."""
     return current_user
+
+
+@router.put("/me", response_model=UserProfile)
+async def update_me(
+    body: UpdateProfileRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update current user profile information."""
+    if body.full_name is not None and body.full_name.strip():
+        current_user.full_name = body.full_name.strip()
+        await db.commit()
+        await db.refresh(current_user)
+    return current_user
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Change authenticated user password."""
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+
+    current_user.hashed_password = hash_password(body.new_password)
+    await db.commit()
+
+    return {"message": "Password updated successfully"}
+
