@@ -28,17 +28,33 @@ function ConnectRepoModal({ isOpen, onClose, onCreated }) {
   useEffect(() => {
     if (isOpen) {
       setError(null);
-      // Try to load teams from stored org
-      const org = localStorage.getItem('aegiscore_org');
-      if (org) {
-        const parsed = JSON.parse(org);
-        if (parsed?.id) {
-          apiClient.get(`/orgs/${parsed.id}/teams`).then(data => {
+      const loadTeams = async () => {
+        try {
+          let orgId = null;
+          const stored = localStorage.getItem('aegiscore_org');
+          if (stored) {
+            try {
+              const parsed = JSON.parse(stored);
+              orgId = parsed?.id;
+            } catch (_) {}
+          }
+          if (!orgId) {
+            const orgs = await apiClient.get('/orgs');
+            if (orgs && orgs.length > 0) {
+              orgId = orgs[0].id;
+              localStorage.setItem('aegiscore_org', JSON.stringify(orgs[0]));
+            }
+          }
+          if (orgId) {
+            const data = await apiClient.get(`/orgs/${orgId}/teams`);
             setTeams(data || []);
             if (data?.length > 0 && !teamId) setTeamId(data[0].id);
-          }).catch(() => {});
+          }
+        } catch (err) {
+          console.error('Failed to load teams:', err);
         }
-      }
+      };
+      loadTeams();
     }
   }, [isOpen]);
 
