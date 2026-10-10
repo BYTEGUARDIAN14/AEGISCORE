@@ -1,12 +1,50 @@
-/**
- * AEGISCORE — FindingDetail Component
- * Slide-in panel showing full finding details.
- */
+import { useState, useEffect } from 'react';
 import Badge from '../ui/Badge';
 import Button from '../ui/Button';
+import apiClient from '../../api/client';
 
 export function FindingDetail({ finding, onClose }) {
+  const [fixData, setFixData] = useState(finding?.fix || null);
+  const [generating, setGenerating] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [applied, setApplied] = useState(finding?.fix?.applied || false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    setFixData(finding?.fix || null);
+    setApplied(finding?.fix?.applied || false);
+    setError(null);
+  }, [finding]);
+
   if (!finding) return null;
+
+  const handleGenerateFix = async () => {
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await apiClient.post('/fixes/generate', { finding_id: finding.id });
+      setFixData(res);
+      setApplied(res.applied);
+    } catch (err) {
+      setError(err.message || 'Failed to generate fix');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleApplyFix = async () => {
+    if (!fixData?.id) return;
+    setApplying(true);
+    setError(null);
+    try {
+      await apiClient.post(`/fixes/${fixData.id}/apply`);
+      setApplied(true);
+    } catch (err) {
+      setError(err.message || 'Failed to apply fix');
+    } finally {
+      setApplying(false);
+    }
+  };
 
   return (
     <div style={{
@@ -166,50 +204,114 @@ export function FindingDetail({ finding, onClose }) {
           </div>
         </div>
 
-        {/* Fix */}
-        {finding.fix && (
+        {/* AI Fix Section */}
+        <div style={{
+          marginTop: '16px',
+          paddingTop: '16px',
+          borderTop: '1px solid var(--border-subtle)',
+        }}>
           <div style={{
-            marginTop: '16px',
-            paddingTop: '16px',
-            borderTop: '1px solid var(--border-subtle)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: '10px',
           }}>
-            <div style={{
+            <span style={{
               fontFamily: 'var(--font-sans)',
               fontWeight: 600,
               fontSize: '13px',
               color: 'var(--text-primary)',
-              marginBottom: '12px',
             }}>
-              AI Fix Available
-            </div>
-            <Badge status={finding.fix.confidence}>
-              {finding.fix.confidence} confidence
-            </Badge>
-            <pre style={{
-              marginTop: '12px',
-              backgroundColor: 'var(--bg-elevated)',
-              border: '1px solid var(--border-default)',
-              borderRadius: '6px',
-              padding: '12px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '12px',
-              lineHeight: 1.6,
-              overflowX: 'auto',
-              whiteSpace: 'pre-wrap',
-            }}>
-              {finding.fix.unified_diff}
-            </pre>
-            <p style={{
-              marginTop: '12px',
-              fontFamily: 'var(--font-sans)',
-              fontSize: '13px',
-              color: 'var(--text-secondary)',
-              lineHeight: 1.6,
-            }}>
-              {finding.fix.explanation}
-            </p>
+              AI Remediation
+            </span>
+            {fixData && (
+              <Badge status={applied ? 'completed' : fixData.confidence}>
+                {applied ? 'Applied' : `${fixData.confidence} confidence`}
+              </Badge>
+            )}
           </div>
-        )}
+
+          {fixData ? (
+            <div>
+              <pre style={{
+                backgroundColor: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                borderRadius: '6px',
+                padding: '12px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                lineHeight: 1.5,
+                overflowX: 'auto',
+                whiteSpace: 'pre-wrap',
+                margin: '8px 0',
+              }}>
+                {fixData.unified_diff}
+              </pre>
+              <p style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                lineHeight: 1.5,
+                marginBottom: '12px',
+              }}>
+                {fixData.explanation}
+              </p>
+
+              {!applied ? (
+                <Button
+                  variant="primary"
+                  loading={applying}
+                  onClick={handleApplyFix}
+                  style={{ width: '100%' }}
+                >
+                  Mark Fix as Applied
+                </Button>
+              ) : (
+                <div style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '12px',
+                  color: 'var(--green-text)',
+                  fontWeight: 500,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}>
+                  ✓ Fix marked as applied to repository
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <p style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '12px',
+                color: 'var(--text-secondary)',
+                marginBottom: '10px',
+              }}>
+                No fix suggestion currently saved. You can generate a private fix using local Ollama LLM.
+              </p>
+              <Button
+                variant="primary"
+                loading={generating}
+                onClick={handleGenerateFix}
+                style={{ width: '100%' }}
+              >
+                Generate Local AI Fix
+              </Button>
+            </div>
+          )}
+
+          {error && (
+            <div style={{
+              marginTop: '8px',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '12px',
+              color: 'var(--red-text)',
+            }}>
+              {error}
+            </div>
+          )}
+        </div>
 
         {/* Correlations */}
         {finding.correlations && finding.correlations.length > 0 && (
