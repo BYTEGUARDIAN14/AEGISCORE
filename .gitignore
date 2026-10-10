@@ -37,6 +37,11 @@ frontend/dist/
 *.pkl
 models/*.pkl
 
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
 # OS
 .DS_Store
 Thumbs.db
