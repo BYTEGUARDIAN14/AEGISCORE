@@ -74,3 +74,22 @@ class RegisterRequest(BaseModel):
         if not v or not v.strip():
             raise ValueError("Full name cannot be empty")
         return v.strip()
+
+
+class ChangePasswordRequest(BaseModel):
+    """Request body for changing password."""
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def password_strength(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("New password must be at least 8 characters")
+        return v
+
+
+class UpdateProfileRequest(BaseModel):
+    """Request body for updating user profile."""
+    full_name: Optional[str] = None
+
